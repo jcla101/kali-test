@@ -1,109 +1,99 @@
 #!/bin/bash
 
-# -------------------------------------------------------
-#  CLA101 AUTONOMOUS DEPLOY ENGINE
-#  Includes:
-#   - AI Commit Messages
-#   - Auto Semantic Versioning
-#   - Auto Tags
-#   - Auto Changelog
-#   - GitHub Push Pipeline
-# -------------------------------------------------------
+set -e
 
-TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
-LOGFILE="deploy.log"
+LOG="deploy-log.txt"
 
-# --- AI Commit Message Generator ------------------------
-generate_ai_message() {
-    DIFF_CONTENT=$(git diff --cached)
+echo "🚀 Starting Release Builder…" | tee -a "$LOG"
 
-    if [[ -z "$DIFF_CONTENT" ]]; then
-        echo "Update applied"
-        return
-    fi
+# ----------------------------
+# 1. PRE-FLIGHT CHECKS
+# ----------------------------
+echo "🔍 Running safety checks…" | tee -a "$LOG"
 
-    # Tiny built-in "AI-style" commit message generator
-    if echo "$DIFF_CONTENT" | grep -qi "test"; then
-        echo "Update test data"
-    elif echo "$DIFF_CONTENT" | grep -qi "deploy"; then
-        echo "Improve deployment script"
-    else
-        echo "General update applied"
-    fi
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+    echo "❌ Not inside a Git repo!"
+    exit 1
 }
 
-AI_MSG=$(generate_ai_message)
-echo "🧠 AI Commit Message: $AI_MSG"
-
-# --- Stage all changes ---------------------------------
-echo "📦 Staging files…"
-git add .
-
-# --- Commit --------------------------------------------
-echo "📝 Creating commit…"
-git commit -m "$AI_MSG"
-
-# -------------------------------------------------------
-# POWER-UP #8 — AUTONOMOUS VERSIONING (Auto-SemVer™)
-# -------------------------------------------------------
-VERSION_FILE="VERSION"
-CHANGELOG="CHANGELOG.md"
-
-# Create version file if missing
-if [ ! -f "$VERSION_FILE" ]; then
-    echo "1.0.0" > "$VERSION_FILE"
-fi
-
-CURRENT_VERSION=$(cat "$VERSION_FILE")
-MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
-MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
-PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
-
-CHANGED_FILES=$(git diff --cached --name-only)
-
-if echo "$CHANGED_FILES" | grep -q "deploy.sh"; then
+# ----------------------------
+# 2. DETECT VERSION CHANGE TYPE
+# ----------------------------
+if git diff --cached | grep -qi "BREAKING"; then
     BUMP="major"
-elif echo "$CHANGED_FILES" | grep -q ".sh"; then
+elif git diff --cached | grep -qi "feat"; then
     BUMP="minor"
 else
     BUMP="patch"
 fi
 
-case $BUMP in
+# ----------------------------
+# 3. AUTO-COMMIT WITH AI MESSAGE
+# ----------------------------
+MESSAGE=$(git diff --cached --name-only | sed 's/^/- /')
+MESSAGE="Auto Release: Updated files
+
+Changed:
+$MESSAGE
+"
+
+git add -A
+git commit -m "$MESSAGE"
+
+# ----------------------------
+# 4. VERSION BUMP
+# ----------------------------
+CURRENT=$(git tag --sort=-v:refname | head -1 | sed 's/v//g')
+[ -z "$CURRENT" ] && CURRENT="1.0.0"
+
+IFS="." read -r MAJ MIN PAT <<< "$CURRENT"
+
+case "$BUMP" in
     major)
-        MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0;;
+        NEW_VERSION="$((MAJ+1)).0.0"
+        ;;
     minor)
-        MINOR=$((MINOR + 1)); PATCH=0;;
+        NEW_VERSION="$MAJ.$((MIN+1)).0"
+        ;;
     patch)
-        PATCH=$((PATCH + 1));;
+        NEW_VERSION="$MAJ.$MIN.$((PAT+1))"
+        ;;
 esac
 
-NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-echo "$NEW_VERSION" > "$VERSION_FILE"
+echo "v$NEW_VERSION" > VERSION
+git add VERSION
+git commit -m "Version bump → v$NEW_VERSION"
 
-echo "🏷  New Version: v$NEW_VERSION ($BUMP update)"
+git tag "v$NEW_VERSION"
 
-# --- Update Changelog -----------------------------------
+# ----------------------------
+# 5. AUTO-GENERATE CHANGELOG
+# ----------------------------
+echo "📝 Generating CHANGELOG…" | tee -a "$LOG"
+
 {
-    echo "## v$NEW_VERSION — $TIMESTAMP"
-    echo "- $AI_MSG"
+    echo "### Release v$NEW_VERSION"
     echo ""
-} >> "$CHANGELOG"
+    git log -1 --pretty=format:"%h — %s (%an)"
+    echo ""
+} >> CHANGELOG.md
 
-# Stage version + changelog
-git add $VERSION_FILE $CHANGELOG
+git add CHANGELOG.md
+git commit -m "Update CHANGELOG for v$NEW_VERSION"
 
-# Commit version bump
-git commit -m "Version bump to v$NEW_VERSION"
+# ----------------------------
+# 6. RELEASE ARTIFACTS
+# ----------------------------
+mkdir -p releases/v$NEW_VERSION
 
-# Create git tag
-git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+cp -r *.sh *.txt VERSION CHANGELOG.md releases/v$NEW_VERSION 2>/dev/null || true
 
-# --- Push ------------------------------------------------
-echo "🚀 Deploying to GitHub…"
-git push --follow-tags
+echo "📦 Artifacts stored in releases/v$NEW_VERSION/" | tee -a "$LOG"
 
-# --- Final Log ------------------------------------------
-echo "[$TIMESTAMP] $AI_MSG" >> "$LOGFILE"
+# ----------------------------
+# 7. PUSH EVERYTHING
+# ----------------------------
+git push origin main --follow-tags
 
-echo "✨ Done! GitHub synced successfully!"
+echo "🎉 Release v$NEW_VERSION successfully deployed!"
+echo "🚀 Power-Up #10 complete!"
