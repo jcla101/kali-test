@@ -1,22 +1,28 @@
 #!/bin/bash
 
-# Auto-Deploy Script for Kali Using Windows SSH Agent
-# Author: jcla101
+# ----------- POWER-UP #4: Auto-Deploy System -----------
+MSG="$1"
 
-echo "🚀 Starting Auto-Deploy..."
-
-# 1. Add all changes
-git add -A
-
-# 2. Commit with an auto-generated message (or custom if passed)
-if [ -z "$1" ]
-then
-  git commit -m "Auto-deploy: $(date '+%Y-%m-%d %H:%M:%S')"
-else
-  git commit -m "$1"
+if [ -z "$MSG" ]; then
+    MSG="Auto-deploy update from Kali"
 fi
 
-# 3. Push to GitHub
-git push -u origin main
+echo "🔄 Staging files..."
+git add -A
 
-echo "✅ Deploy complete!"
+echo "📝 Creating commit..."
+git commit -m "$MSG"
+
+echo "🚀 Deploying to GitHub..."
+git push
+
+echo "📡 Checking remote status..."
+git remote -v
+
+echo "📄 Latest commit log:"
+git log -1 --stat --decorate --color
+
+echo "🌿 Current branch:"
+git branch --show-current
+
+echo "✨ Done! GitHub synced successfully!"
