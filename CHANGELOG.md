@@ -10,3 +10,6 @@
 ### Release v1.0.4
 
 c03c749 — Version bump → v1.0.4 (jcla101)
+### Release v1.0.5
+
+a661e4d — Version bump → v1.0.5 (jcla101)
