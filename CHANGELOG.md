@@ -7,3 +7,6 @@
 ## v1.0.3 — 2025-12-05 17:29:06
 - Update applied
 
+### Release v1.0.4
+
+c03c749 — Version bump → v1.0.4 (jcla101)
