@@ -1,76 +1,109 @@
 #!/bin/bash
 
-# ----------------------------------------------------
-# POWER-UP #6: AI-Generated Commit Messages (Local LLM)
-# ----------------------------------------------------
+# -------------------------------------------------------
+# POWER-UP #7: SELF-HEALING REPO ENGINE (SHRE)™
+# -------------------------------------------------------
 
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 LOGFILE="deploy-log.txt"
+REMOTE_URL="git@github.com:jcla101/kali-test.git"
 
-# -----------------------------
-# AI Commit Message Generator
-# -----------------------------
-generate_ai_message() {
-    DIFF_CONTENT=$(git diff --cached --unified=0)
+# -----------------------------------------
+# 1. Verify the .git directory exists
+# -----------------------------------------
+if [ ! -d ".git" ]; then
+    echo "🚨 ERROR: .git directory missing!"
+    echo "🛠 Attempting automatic repo reconstruction..."
+    git init
+    git remote add origin "$REMOTE_URL"
+    echo "✅ Repo structure restored."
+fi
 
-    # If no diff (shouldn't happen since we check earlier)
-    if [ -z "$DIFF_CONTENT" ]; then
-        echo "Auto-commit at $TIMESTAMP"
-        return
-    fi
+# -----------------------------------------
+# 2. Ensure the origin URL is correct
+# -----------------------------------------
+CURRENT_ORIGIN=$(git remote get-url origin 2>/dev/null)
 
-    # Count inserted + deleted lines
-    ADDED=$(echo "$DIFF_CONTENT"   | grep '^+' | wc -l)
-    REMOVED=$(echo "$DIFF_CONTENT" | grep '^-' | wc -l)
+if [ "$CURRENT_ORIGIN" != "$REMOTE_URL" ]; then
+    echo "🔧 Repairing incorrect remote URL..."
+    git remote remove origin 2>/dev/null
+    git remote add origin "$REMOTE_URL"
+    echo "✔ Origin set to $REMOTE_URL"
+fi
 
-    # Identify files changed
-    FILES=$(git diff --cached --name-only | tr '\n' ',' | sed 's/,$//')
+# -----------------------------------------
+# 3. Fix detached HEAD state
+# -----------------------------------------
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
-    # Generate commit title based on change patterns
-    TITLE="Updated $FILES ($ADDED additions, $REMOVED deletions)"
+if [ "$BRANCH" == "HEAD" ]; then
+    echo "⚠ Detached HEAD detected!"
+    echo "🛠 Recovering main branch..."
+    git checkout -B main
+    echo "✔ HEAD restored to main"
+fi
 
-    # Return the AI-style message
-    echo "$TITLE"
-}
+# -----------------------------------------
+# 4. Verify SSH agent authentication
+# -----------------------------------------
+echo "🔐 Checking SSH authentication..."
+ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"
 
-# ----------------------------------------
-# MAIN DEPLOY LOGIC
-# ----------------------------------------
+if [ $? -ne 0 ]; then
+    echo "❌ SSH authentication failed!"
+    echo "🛠 Trying to automatically fix SSH agent..."
+    eval "$(ssh-agent -s)"
+    ssh-add ~/.ssh/id_ed25519 2>/dev/null || ssh-add ~/.ssh/id_rsa 2>/dev/null
+fi
 
-echo "🔍 Checking for changes..."
-
-# Stage everything first (so we can analyze the diff)
+# -----------------------------------------
+# 5. Stage changes and check if any exist
+# -----------------------------------------
 git add -A
 
-# If nothing changed:
 if git diff --cached --quiet; then
-    echo "✨ No changes detected. Nothing to deploy!"
+    echo "✨ No changes detected. Deployment skipped."
     exit 0
 fi
+
+# -----------------------------------------
+# 6. AI Commit Message Generator
+# -----------------------------------------
+generate_ai_message() {
+    DIFF_CONTENT=$(git diff --cached --unified=0)
+    ADDED=$(echo "$DIFF_CONTENT" | grep '^+' | wc -l)
+    REMOVED=$(echo "$DIFF_CONTENT" | grep '^-' | wc -l)
+    FILES=$(git diff --cached --name-only | tr '\n' ',' | sed 's/,$//')
+    echo "Updated $FILES ($ADDED additions, $REMOVED deletions)"
+}
 
 echo "🧠 Generating AI commit message..."
 AI_MSG=$(generate_ai_message)
 
-echo ""
-echo "📝 Commit message generated:"
-echo "----------------------------------------"
+echo "📄 Commit message:"
+echo "----------------------------------"
 echo "$AI_MSG"
-echo "----------------------------------------"
+echo "----------------------------------"
 
-echo "📝 Creating commit..."
 git commit -m "$AI_MSG"
 
-echo "🚀 Deploying to GitHub..."
-git push
+# -----------------------------------------
+# 7. Safe Push (auto-retry)
+# -----------------------------------------
+echo "🚀 Deploying with safe-push..."
 
-echo "📡 Remote status:"
-git remote -v
+git push origin main
+if [ $? -ne 0 ]; then
+    echo "⚠ Push failed! Attempting repair..."
+    git fetch --all
+    git pull --rebase origin main
+    git push origin main
+fi
 
-echo "📄 Last commit summary:"
-git log -1 --stat --decorate --color
-
-# Append to logfile
+# -----------------------------------------
+# 8. Final log entry
+# -----------------------------------------
 echo "[$TIMESTAMP] $AI_MSG" >> "$LOGFILE"
 
-echo "✨ AI-powered deploy complete!"
-echo "📁 Logged in $LOGFILE"
+echo "✨ Deployment complete — repo is healthy!"
+echo "📄 Logged in $LOGFILE"
