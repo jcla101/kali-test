@@ -13,7 +13,3 @@
 🔧 Semantic classification: 🔥 BREAKING CHANGE (major bump)
 🔢 New version → v2.0.0
 📝 Generating CHANGELOG…
-📦 Artifacts stored in releases/v2.0.0/
-🚀 Starting Release Builder…
-🔍 Running safety checks…
-🔧 Semantic classification: 🔥 BREAKING CHANGE (major bump)
