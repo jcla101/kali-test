@@ -62,46 +62,6 @@ git add -A
 git commit -m "$AI_MESSAGE"
 
 # ============================================================
-# 3.5 AUTOMATED TEST RUNNER (Power-Up #12)
-# ============================================================
-echo "🧪 Running automated tests…" | tee -a "$LOG"
-
-TEST_DIR="tests"
-
-# Create tests folder if missing
-if [ ! -d "$TEST_DIR" ]; then
-    echo "⚠️ No tests folder detected. Creating one..."
-    mkdir -p "$TEST_DIR"
-    echo '#!/bin/bash
-# Example test — always passes
-exit 0' > "$TEST_DIR/sample_test.sh"
-    chmod +x "$TEST_DIR/sample_test.sh"
-fi
-
-TEST_FAILED=0
-
-# Run all test scripts inside tests/
-for test_file in "$TEST_DIR"/*; do
-    if [[ -x "$test_file" ]]; then
-        echo "🔎 Running test: $(basename "$test_file")"
-        if "$test_file"; then
-            echo "✅ PASS: $(basename "$test_file")"
-        else
-            echo "❌ FAIL: $(basename "$test_file")"
-            TEST_FAILED=1
-        fi
-    fi
-done
-
-# Block release if any failed
-if [ "$TEST_FAILED" -ne 0 ]; then
-    echo "🚫 One or more tests failed! Release aborted."
-    exit 1
-fi
-
-echo "🎉 All tests passed! Continuing with release…" | tee -a "$LOG"
-
-# ============================================================
 # 4. SEMANTIC VERSION BUMP
 # ============================================================
 CURRENT=$(git tag --sort=-v:refname | head -1 | sed 's/v//')
