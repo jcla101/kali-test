@@ -217,7 +217,3 @@ trap - ERR
 echo "🎉 Release v$NEW_VERSION successfully deployed!"
 echo "⚡ Power-Up #11 activated!"
 
-
-# ROLLBACK_TEST_MARKER
-echo "💥 Simulating deploy failure for rollback test..."
-false   # non-zero exit code → should trigger rollback()
