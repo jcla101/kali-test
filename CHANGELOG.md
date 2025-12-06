@@ -13,3 +13,7 @@ c03c749 — Version bump → v1.0.4 (jcla101)
 ### Release v1.0.5
 
 a661e4d — Version bump → v1.0.5 (jcla101)
+## v2.0.0 — 2025-12-05
+- 🔥 BREAKING CHANGE
+
+9ac27e8 — Version bump → v2.0.0 (jcla101)
