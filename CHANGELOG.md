@@ -37,3 +37,7 @@ d8ab39f — Version bump → v5.0.0 (jcla101)
 - 📦 General Update
 
 55581ed — Version bump → v5.0.2 (jcla101)
+## v5.0.3 — 2025-12-05
+- 📦 General Update
+
+1491b6f — Version bump → v5.0.3 (jcla101)
