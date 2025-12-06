@@ -101,6 +101,66 @@ fi
 
 echo "🎉 All tests passed! Continuing with release…" | tee -a "$LOG"
 
+# ----------------------------
+# PARALLEL TEST ENGINE (Power-Up #13)
+# ----------------------------
+echo "🧪 Running automated tests…"
+
+TEST_DIR="tests"
+FAILED=0
+PIDS=()
+TEST_NAMES=()
+
+if [ -d "$TEST_DIR" ]; then
+    for test_file in "$TEST_DIR"/*.sh; do
+        [ -e "$test_file" ] || continue
+
+        test_name=$(basename "$test_file")
+        TEST_NAMES+=("$test_name")
+
+        echo "⚙️  Starting test: $test_name"
+
+        (
+            bash "$test_file"
+            echo $? > "/tmp/test_exit_$test_name"
+        ) &
+
+        PIDS+=("$!")
+    done
+
+    echo "⏳ Waiting for tests to complete…"
+    wait
+
+    echo ""
+    echo "---------------------------------"
+    echo "🧪 Test Summary"
+    echo "---------------------------------"
+
+    for tname in "${TEST_NAMES[@]}"; do
+        exit_code=$(cat "/tmp/test_exit_$tname")
+
+        if [ "$exit_code" -eq 0 ]; then
+            echo "✔ PASS: $tname"
+        else
+            echo "❌ FAIL: $tname"
+            FAILED=1
+        fi
+
+        rm -f "/tmp/test_exit_$tname"
+    done
+
+    echo "---------------------------------"
+
+    if [ "$FAILED" -ne 0 ]; then
+        echo "🚫 One or more tests failed! Release aborted."
+        exit 1
+    else
+        echo "🎉 All tests passed!"
+    fi
+else
+    echo "ℹ️ No tests directory found. Skipping automated tests."
+fi
+
 # ============================================================
 # 4. SEMANTIC VERSION BUMP
 # ============================================================
