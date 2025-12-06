@@ -25,3 +25,7 @@ a661e4d — Version bump → v1.0.5 (jcla101)
 - 🔥 BREAKING CHANGE
 
 25da5ba — Version bump → v4.0.0 (jcla101)
+## v5.0.0 — 2025-12-05
+- 🔥 BREAKING CHANGE
+
+d8ab39f — Version bump → v5.0.0 (jcla101)
