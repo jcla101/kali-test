@@ -70,3 +70,10 @@
 🚀 Starting Release Builder…
 🔍 Running safety checks…
 🔧 Semantic classification: 📦 General Update (patch bump)
+🧪 Running automated tests…
+🔢 New version → v5.0.3
+📝 Generating CHANGELOG…
+📦 Artifacts stored in releases/v5.0.3/
+🚀 Starting Release Builder…
+🔍 Running safety checks…
+🔧 Semantic classification: 📦 General Update (patch bump)
