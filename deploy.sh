@@ -134,6 +134,31 @@ else
 fi
 
 # ============================================================
+# 3.9 ROLLBACK ENGINE (Power-Up #14)
+# ============================================================
+
+# Save current commit as "safe point"
+LAST_GOOD=$(git rev-parse HEAD)
+
+rollback() {
+    echo "⚠️ Deployment failed! Rolling back…" | tee -a "$LOG"
+
+    # Restore to last good commit
+    git reset --hard "$LAST_GOOD" >/dev/null 2>&1
+
+    # Remove failed tag if it exists
+    if [ -n "$NEW_VERSION" ] && git tag | grep -q "v$NEW_VERSION"; then
+        git tag -d "v$NEW_VERSION" >/dev/null 2>&1
+    fi
+
+    echo "🌀 Rollback complete. Repository restored to stable state." | tee -a "$LOG"
+    exit 1
+}
+
+# Trap ANY failure from this point forward
+trap rollback ERR
+
+# ============================================================
 # 4. SEMANTIC VERSION BUMP
 # ============================================================
 CURRENT=$(git tag --sort=-v:refname | head -1 | sed 's/v//')
@@ -185,6 +210,9 @@ echo "📦 Artifacts stored in $RELEASE_DIR/" | tee -a "$LOG"
 # ============================================================
 echo "🚀 Deploying to GitHub…"
 git push origin main --follow-tags
+
+# Disable rollback trap on success
+trap - ERR
 
 echo "🎉 Release v$NEW_VERSION successfully deployed!"
 echo "⚡ Power-Up #11 activated!"

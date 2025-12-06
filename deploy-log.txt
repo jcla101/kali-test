@@ -45,3 +45,11 @@
 🚀 Starting Release Builder…
 🔍 Running safety checks…
 🔧 Semantic classification: 🔥 BREAKING CHANGE (major bump)
+🧪 Running automated tests…
+🔢 New version → v5.0.0
+📝 Generating CHANGELOG…
+📦 Artifacts stored in releases/v5.0.0/
+🚀 Starting Release Builder…
+🔍 Running safety checks…
+🚀 Starting Release Builder…
+🔍 Running safety checks…
