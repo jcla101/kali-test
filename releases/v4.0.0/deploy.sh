@@ -62,75 +62,103 @@ git add -A
 git commit -m "$AI_MESSAGE"
 
 # ============================================================
-# 3.5 AUTOMATED TEST ENGINE (Parallel, Power-Up #13)
+# 3.5 AUTOMATED TEST RUNNER (Power-Up #12)
 # ============================================================
-
 echo "🧪 Running automated tests…" | tee -a "$LOG"
 
 TEST_DIR="tests"
 
-# Auto-create tests folder if missing
+# Create tests folder if missing
 if [ ! -d "$TEST_DIR" ]; then
     echo "⚠️ No tests folder detected. Creating one..."
     mkdir -p "$TEST_DIR"
     echo '#!/bin/bash
-# Default passing test
+# Example test — always passes
 exit 0' > "$TEST_DIR/sample_test.sh"
     chmod +x "$TEST_DIR/sample_test.sh"
 fi
 
+TEST_FAILED=0
+
+# Run all test scripts inside tests/
+for test_file in "$TEST_DIR"/*; do
+    if [[ -x "$test_file" ]]; then
+        echo "🔎 Running test: $(basename "$test_file")"
+        if "$test_file"; then
+            echo "✅ PASS: $(basename "$test_file")"
+        else
+            echo "❌ FAIL: $(basename "$test_file")"
+            TEST_FAILED=1
+        fi
+    fi
+done
+
+# Block release if any failed
+if [ "$TEST_FAILED" -ne 0 ]; then
+    echo "🚫 One or more tests failed! Release aborted."
+    exit 1
+fi
+
+echo "🎉 All tests passed! Continuing with release…" | tee -a "$LOG"
+
+# ----------------------------
+# PARALLEL TEST ENGINE (Power-Up #13)
+# ----------------------------
+echo "🧪 Running automated tests…"
+
+TEST_DIR="tests"
 FAILED=0
 PIDS=()
 TEST_NAMES=()
 
-# Launch all tests in parallel
-for test_file in "$TEST_DIR"/*.sh; do
-    [ -e "$test_file" ] || continue
+if [ -d "$TEST_DIR" ]; then
+    for test_file in "$TEST_DIR"/*.sh; do
+        [ -e "$test_file" ] || continue
 
-    test_name=$(basename "$test_file")
-    TEST_NAMES+=("$test_name")
+        test_name=$(basename "$test_file")
+        TEST_NAMES+=("$test_name")
 
-    echo "⚙️  Starting test: $test_name"
+        echo "⚙️  Starting test: $test_name"
 
-    (
-        bash "$test_file"
-        echo $? > "/tmp/test_exit_$test_name"
-    ) &
+        (
+            bash "$test_file"
+            echo $? > "/tmp/test_exit_$test_name"
+        ) &
 
-    PIDS+=("$!")
-done
+        PIDS+=("$!")
+    done
 
-# Wait for all parallel tests
-echo "⏳ Waiting for tests to complete…"
-wait
+    echo "⏳ Waiting for tests to complete…"
+    wait
 
-# Summaries
-echo ""
-echo "---------------------------------"
-echo "🧪 Test Summary"
-echo "---------------------------------"
+    echo ""
+    echo "---------------------------------"
+    echo "🧪 Test Summary"
+    echo "---------------------------------"
 
-for tname in "${TEST_NAMES[@]}"; do
-    exit_code=$(cat "/tmp/test_exit_$tname")
+    for tname in "${TEST_NAMES[@]}"; do
+        exit_code=$(cat "/tmp/test_exit_$tname")
 
-    if [ "$exit_code" -eq 0 ]; then
-        echo "✔ PASS: $tname"
+        if [ "$exit_code" -eq 0 ]; then
+            echo "✔ PASS: $tname"
+        else
+            echo "❌ FAIL: $tname"
+            FAILED=1
+        fi
+
+        rm -f "/tmp/test_exit_$tname"
+    done
+
+    echo "---------------------------------"
+
+    if [ "$FAILED" -ne 0 ]; then
+        echo "🚫 One or more tests failed! Release aborted."
+        exit 1
     else
-        echo "❌ FAIL: $tname"
-        FAILED=1
+        echo "🎉 All tests passed!"
     fi
-
-    rm -f "/tmp/test_exit_$tname"
-done
-
-echo "---------------------------------"
-
-# Abort release if any test failed
-if [ "$FAILED" -ne 0 ]; then
-    echo "🚫 One or more tests failed! Release aborted."
-    exit 1
 else
-    echo "🎉 All tests passed!"
+    echo "ℹ️ No tests directory found. Skipping automated tests."
 fi
 
 # ============================================================
